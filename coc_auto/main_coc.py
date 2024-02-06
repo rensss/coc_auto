@@ -7,6 +7,7 @@ import platform
 import pyautogui
 import subprocess
 import pywinctl as pwc
+from PIL import Image
 from pywinbox import Box, Size, Point, Rect, pointInBox
 from Quartz import CGWindowListCopyWindowInfo, kCGWindowListOptionOnScreenOnly, kCGNullWindowID
 
@@ -45,31 +46,31 @@ def get_app_window_by_name(app_name):
     except Exception as e:
         print(f"Error finding {app_name} window: {e}")
 
-def get_position_with_picture_name(name, confidence = 0.9):
+def get_position_with_picture(img, confidence = 0.9):
     # 使用PyAutoGUI库查找应用程序窗口位置
     try:
-        position = pyautogui.locateOnScreen(name, grayscale=True, confidence=confidence)
+        position = pyautogui.locateCenterOnScreen(img, grayscale=True, confidence=confidence)
         return position
     except Exception as e:
-        print(f"Error finding rect: {name}: -- {e}")
+        print(f"Error finding rect: {img}: -- {e}")
         return None
 
 def get_app_window_position(rect):
+    """
+    返回给定 rect 屏幕截图 的 position
+
+    :param rect: 获取给定 rect 的截图，根据截图返回 position
+    """
     # 获取应用程序窗口的屏幕区域
-    x, y = rect.left, rect.top
-    width, height = rect.right-rect.left, rect.bottom-rect.top  # 替换为你想要截取的宽度和高度
-    screen_capture_command = ["screencapture", "-R", f"{x},{y},{x+width},{y+height}", "screenshot.png"]
+    # 替换为你想要截取的宽度和高度
+    left,top,right,bottom = rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top
+    # print(f'---- {left} {top} {right} {bottom}')
+    screen_capture_command = ["screencapture", "-R", f"{left},{top},{right},{bottom}", "current_status.png"]
 
     # 使用命令行工具"screencapture"获取屏幕截图
     subprocess.run(screen_capture_command)
 
-    # 使用PyAutoGUI库查找应用程序窗口位置
-    try:
-        app_position = pyautogui.locateOnScreen("screenshot.png", grayscale=True, confidence=0.9)
-        return app_position
-    except Exception as e:
-        print(f"Error finding rect: {rect}: -- {e}")
-        return None
+    return get_position_with_picture("current_status.png")
 
 def cd_to_script_directory():
     # 获取当前脚本的绝对路径
@@ -85,9 +86,29 @@ def cd_to_script_directory():
     print(f"Current working directory: {os.getcwd()}")
 
 def simulate_click(x, y):
-    print(f'---- x:{x} y:{y}')
+    print(f'---- simulate_click x:{x} y:{y}')
     # 模拟点击屏幕上的坐标
     pyautogui.click(x, y)
+
+def open_coc(location):
+    """
+    在屏幕中找到 coc app 并点击打开
+    """
+    if location:
+        target_x, target_y = location[0]/2.0, location[1]/2.0
+        simulate_click(target_x, target_y)
+    else:
+        main_app_name = 'app.png'
+        main_app_image_path = sourceImagePath + '/' + main_app_name
+        app_position = get_position_with_picture(main_app_image_path)
+        print(f'---- app_position {app_position}')
+
+        if app_position:
+            # 模拟点击窗口中的某个位置，替换为你想要点击的坐标
+            target_x, target_y = app_position[0]/2.0, app_position[1]/2.0
+            simulate_click(target_x, target_y)
+        else:
+            print(f"{app_position} not found.")
 
 if __name__ == "__main__":
     # 清空
@@ -112,26 +133,24 @@ if __name__ == "__main__":
     # app_position = get_app_window_position(app_name)
     # print(f"---- app_position: {app_position}")
 
-    window_name = "MuMu安卓设备"
-    mumu_window, window_rect = get_window_rect(window_name)
+    mumu_name = "MuMu安卓设备"
+    mumu_window, window_rect = get_window_rect(mumu_name)
 
     if window_rect:
-        print(f"{window_name} window rect: {window_rect}")
+        print(f"{mumu_name} window rect: {window_rect}")
     else:
-        print(f"{window_name} window not found.")
-
-    mumu_name = "MuMu安卓设备"
+        print(f"{mumu_name} window not found.")
+    # print(f'---- mumu_window:{mumu_window}')
+    
     window = get_app_window_by_name(app_name)
     print(f"---- window: {window}")
     window.activate()
     print(f'---- window.isActive {window.isActive}')
 
-    # print(f'---- mumu_window:{mumu_window}')
-    fixRect = Rect(window_rect[0], window_rect[1], window_rect[0]+window_rect[2], window_rect[1]+window_rect[3])
-    print(f'---- mumu_window:{fixRect}')
-    position = get_app_window_position(fixRect)
-    print(f'---- position {position}')
-
+    # fixRect = Rect(window_rect[0], window_rect[1], window_rect[0]+window_rect[2], window_rect[1]+window_rect[3])
+    # print(f'---- mumu_window:{fixRect}')
+    # position = get_app_window_position(fixRect)
+    # print(f'---- position {position}')
 
     # rect = window.getClientFrame()
     # print(f'---- rect {rect}')
@@ -144,14 +163,22 @@ if __name__ == "__main__":
     # print(f'---- position {position}')
     # # pyautogui.click(0, 0)
 
-    # main_app_name = 'app.png'
-    # main_app_image_path = sourceImagePath + '/' + main_app_name
-    # app_position = get_position_with_picture_name(main_app_image_path)
-    # print(f'---- app_position {app_position}')
+    app_logo_pic_name = "app.png"
+    app_logo_pic_path = sourceImagePath + "/" + app_logo_pic_name
+    app_logo_pic = Image.open(app_logo_pic_path)
 
-    # if app_position:
-    #     # 模拟点击窗口中的某个位置，替换为你想要点击的坐标
-    #     target_x, target_y = app_position[0]/2.0 + 30, app_position[1]/2.0 + 50
-    #     simulate_click(target_x, target_y)
-    # else:
-    #     print(f"{app_position} not found.")
+     # 显示图像的宽度和高度
+    width, height = app_logo_pic.size
+    print(f"---- 图像宽度: {width}, 图像高度: {height}")
+
+    logo_position = get_position_with_picture(app_logo_pic_path)
+    if logo_position:
+        open_coc(logo_position)
+    else:
+        print(f'---- 不在 simulator 首页')
+
+    # 关闭图像文件
+    app_logo_pic.close()
+
+
+
